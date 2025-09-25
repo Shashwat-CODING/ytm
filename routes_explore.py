@@ -19,10 +19,15 @@ def charts():
 	responses:
 	  200:
 	    description: Charts data
+	  500:
+	    description: Charts data unavailable
 	"""
 	country = request.args.get("country", default=None, type=str)
-	data = _client().get_charts(country=country)
-	return jsonify(data)
+	try:
+		data = _client().get_charts(country=country)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Charts data unavailable: {str(e)}"}), 500
 
 
 @bp_explore.get("/moods")
@@ -32,9 +37,14 @@ def moods():
 	responses:
 	  200:
 	    description: Mood categories
+	  500:
+	    description: Mood categories unavailable
 	"""
-	data = _client().get_mood_categories()
-	return jsonify(data)
+	try:
+		data = _client().get_mood_categories()
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Mood categories unavailable: {str(e)}"}), 500
 
 
 @bp_explore.get("/moods/<category_id>")
@@ -49,9 +59,14 @@ def moods_playlists(category_id: str):
 	responses:
 	  200:
 	    description: Mood playlists
+	  500:
+	    description: Mood playlists unavailable
 	"""
-	data = _client().get_mood_playlists(category_id)
-	return jsonify(data)
+	try:
+		data = _client().get_mood_playlists(category_id)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Mood playlists unavailable: {str(e)}"}), 500
 
 
 @bp_explore.get("/watch_playlist")
@@ -95,5 +110,8 @@ def watch_playlist():
 	limit = request.args.get("limit", default=25, type=int)
 	if not video_id and not playlist_id:
 		return jsonify({"error": "Provide either videoId or playlistId"}), 400
-	data = _client().get_watch_playlist(videoId=video_id, playlistId=playlist_id, radio=radio, shuffle=shuffle, limit=limit)
-	return jsonify(data)
+	try:
+		data = _client().get_watch_playlist(videoId=video_id, playlistId=playlist_id, radio=radio, shuffle=shuffle, limit=limit)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Watch playlist unavailable: {str(e)}"}), 500

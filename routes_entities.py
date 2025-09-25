@@ -19,9 +19,14 @@ def get_song(video_id: str):
 	responses:
 	  200:
 	    description: Song metadata
+	  500:
+	    description: Song data unavailable
 	"""
-	data = _client().get_song(video_id)
-	return jsonify(data)
+	try:
+		data = _client().get_song(video_id)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Song data unavailable: {str(e)}"}), 500
 
 
 @bp_entities.get("/albums/<browse_id>")
@@ -36,9 +41,14 @@ def get_album(browse_id: str):
 	responses:
 	  200:
 	    description: Album metadata and tracks
+	  500:
+	    description: Album data unavailable
 	"""
-	data = _client().get_album(browse_id)
-	return jsonify(data)
+	try:
+		data = _client().get_album(browse_id)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Album data unavailable: {str(e)}"}), 500
 
 
 @bp_entities.get("/artists/<browse_id>")
@@ -53,9 +63,14 @@ def get_artist(browse_id: str):
 	responses:
 	  200:
 	    description: Artist info and releases
+	  500:
+	    description: Artist data unavailable
 	"""
-	data = _client().get_artist(browse_id)
-	return jsonify(data)
+	try:
+		data = _client().get_artist(browse_id)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Artist data unavailable: {str(e)}"}), 500
 
 
 @bp_entities.get("/playlists/<playlist_id>")
@@ -75,7 +90,12 @@ def get_playlist(playlist_id: str):
 	responses:
 	  200:
 	    description: Playlist metadata and items
+	  500:
+	    description: Playlist data unavailable
 	"""
 	limit = request.args.get("limit", default=100, type=int)
-	data = _client().get_playlist(playlist_id, limit=limit)
-	return jsonify(data)
+	try:
+		data = _client().get_playlist(playlist_id, limit=limit)
+		return jsonify(data)
+	except Exception as e:
+		return jsonify({"error": f"Playlist data unavailable: {str(e)}"}), 500
