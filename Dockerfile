@@ -5,13 +5,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 	PIP_NO_CACHE_DIR=1 \
 	PORT=7860
 
-# System deps and Python (Ubuntu 22.04 provides Python 3.10)
+# System deps and Python 3.10 (default in Ubuntu 22.04)
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	ca-certificates \
 	curl \
+	git \
+	build-essential \
+	pkg-config \
 	python3 \
 	python3-pip \
 	python3-venv \
+	python3-distutils \
 	&& update-ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 

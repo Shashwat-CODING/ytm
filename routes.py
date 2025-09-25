@@ -43,6 +43,11 @@ def search():
 	    required: false
 	    default: 25
 	    description: Maximum number of results
+	  - name: official
+	    in: query
+	    type: boolean
+	    required: false
+	    description: Prefer official music videos when filter=videos
 	responses:
 	  200:
 	    description: Search results
@@ -55,11 +60,12 @@ def search():
 
 	flt: Optional[str] = request.args.get("filter", type=str)
 	limit: int = request.args.get("limit", default=25, type=int)
+	official: Optional[bool] = request.args.get("official", default=None, type=lambda v: v.lower() == "true")
 
 	if flt and flt not in ALLOWED_FILTERS:
 		return jsonify({"error": f"Invalid filter. Allowed: {sorted(list(ALLOWED_FILTERS))}"}), 400
 
-	results = _client().search(query, filter=flt, limit=limit, ignore_spelling=False)
+	results = _client().search(query, filter=flt, limit=limit, ignore_spelling=False, official_music_video=official)
 	return jsonify({"results": results})
 
 

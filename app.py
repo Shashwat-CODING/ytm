@@ -3,6 +3,7 @@ from ytmusicapi import YTMusic
 from routes import bp as api_bp
 from routes_entities import bp_entities
 from routes_explore import bp_explore
+from routes_youtube import bp_youtube
 from swagger import init_swagger
 import os
 
@@ -28,6 +29,7 @@ def create_app() -> Flask:
 	app.register_blueprint(api_bp, url_prefix="/api")
 	app.register_blueprint(bp_entities, url_prefix="/api")
 	app.register_blueprint(bp_explore, url_prefix="/api")
+	app.register_blueprint(bp_youtube, url_prefix="/api")
 	return app
 
 
