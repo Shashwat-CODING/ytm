@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 from ytmusicapi import YTMusic
 from routes import bp as api_bp
 from routes_entities import bp_entities
@@ -10,6 +11,9 @@ import os
 
 def create_app() -> Flask:
 	app = Flask(__name__)
+
+	# Enable CORS for all domains
+	CORS(app, origins="*")
 
 	# Unauthenticated client (no OAuth or cookies)
 	# See: https://ytmusicapi.readthedocs.io/en/stable/
