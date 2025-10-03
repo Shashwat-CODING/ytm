@@ -27,7 +27,12 @@ def charts():
 		data = _client().get_charts(country=country)
 		return jsonify(data)
 	except Exception as e:
-		return jsonify({"error": f"Charts data unavailable: {str(e)}"}), 500
+		error_msg = str(e) if str(e).strip() else "Charts service temporarily unavailable"
+		return jsonify({
+			"error": f"Charts data unavailable: {error_msg}",
+			"message": "YouTube Music charts are currently not accessible. This may be due to regional restrictions or service limitations.",
+			"fallback": "Try using the search endpoint instead: /api/search?q=trending&filter=songs"
+		}), 500
 
 
 @bp_explore.get("/moods")
@@ -44,7 +49,12 @@ def moods():
 		data = _client().get_mood_categories()
 		return jsonify(data)
 	except Exception as e:
-		return jsonify({"error": f"Mood categories unavailable: {str(e)}"}), 500
+		error_msg = str(e) if str(e).strip() else "Mood categories service temporarily unavailable"
+		return jsonify({
+			"error": f"Mood categories unavailable: {error_msg}",
+			"message": "YouTube Music mood categories are currently not accessible.",
+			"fallback": "Try using the search endpoint instead: /api/search?q=relaxing&filter=playlists"
+		}), 500
 
 
 @bp_explore.get("/moods/<category_id>")
@@ -66,7 +76,12 @@ def moods_playlists(category_id: str):
 		data = _client().get_mood_playlists(category_id)
 		return jsonify(data)
 	except Exception as e:
-		return jsonify({"error": f"Mood playlists unavailable: {str(e)}"}), 500
+		error_msg = str(e) if str(e).strip() else "Mood playlists service temporarily unavailable"
+		return jsonify({
+			"error": f"Mood playlists unavailable: {error_msg}",
+			"message": f"Mood playlists for category '{category_id}' are currently not accessible.",
+			"fallback": "Try using the search endpoint instead: /api/search?q=mood&filter=playlists"
+		}), 500
 
 
 @bp_explore.get("/watch_playlist")

@@ -99,3 +99,72 @@ def get_playlist(playlist_id: str):
 		return jsonify(data)
 	except Exception as e:
 		return jsonify({"error": f"Playlist data unavailable: {str(e)}"}), 500
+
+
+@bp_entities.get("/artist/<browse_id>")
+def get_artist_summary(browse_id: str):
+	"""Get concise artist summary (name, top songs playlist, recommendations, featured-on)
+	---
+	parameters:
+	  - name: browse_id
+	    in: path
+	    type: string
+	    required: true
+	responses:
+	  200:
+	    description: Artist summary payload
+	  500:
+	    description: Artist data unavailable
+	"""
+	try:
+		artist = _client().get_artist(browse_id)
+
+		artist_name = artist.get("name")
+
+		# Attempt to extract a playlistId for Top songs
+		songs_section = artist.get("songs") or {}
+		playlist_id = songs_section.get("playlistId")
+		if not playlist_id:
+			# Fallback: try to take from first song's playlistId if present
+			results = songs_section.get("results") or []
+			if results:
+				playlist_id = results[0].get("playlistId")
+
+		# Recommended artists (Fans might also like)
+		related = artist.get("related") or []
+		recommended_artists = []
+		for item in related:
+			name = item.get("title") or item.get("name")
+			browse = item.get("browseId")
+			thumbs = item.get("thumbnails") or []
+			thumb_url = thumbs[0]["url"] if thumbs else None
+			recommended_artists.append({
+				"name": name,
+				"browseId": browse,
+				"thumbnail": thumb_url,
+			})
+
+		# Featured on playlists
+		playlists_section = artist.get("playlists") or {}
+		featured_results = playlists_section.get("results") or []
+		featured_on_playlists = []
+		for pl in featured_results:
+			title = pl.get("title")
+			browse = pl.get("browseId") or pl.get("playlistId")
+			thumbs = pl.get("thumbnails") or []
+			thumb_url = thumbs[0]["url"] if thumbs else None
+			featured_on_playlists.append({
+				"title": title,
+				"browseId": browse,
+				"thumbnail": thumb_url,
+			})
+
+		payload = {
+			"artistName": artist_name,
+			"playlistId": playlist_id,
+			"recommendedArtists": recommended_artists or None,
+			"featuredOnPlaylists": featured_on_playlists or None,
+		}
+		return jsonify(payload)
+	except Exception as e:
+		return jsonify({"error": f"Artist data unavailable: {str(e)}"}), 500

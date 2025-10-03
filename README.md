@@ -121,25 +121,155 @@ curl "https://ytm-jgmk.onrender.com/api/yt_search?q=tech&filter=channels&limit=3
 curl "https://ytm-jgmk.onrender.com/api/yt_playlists?q=music&limit=10"
 ```
 
-## Response Format
+## Sample Responses (local run snapshots)
 
-All endpoints return JSON responses with the following structure:
+Note: These are abbreviated examples to illustrate the response shape. Fields may vary based on content and availability.
 
-### Success Response
+### Health
+GET `/health`
+```json
+{ "status": "ok" }
+```
+
+### YouTube Music
+
+GET `/api/search?q=music&filter=songs&limit=1`
 ```json
 {
-  "results": [...],
-  "query": "search_term",
-  "filter": "songs"
+  "results": [
+    {
+      "resultType": "song",
+      "title": "Rain Sound (Pure White Noise for Natural Deep Sleep Inducing)",
+      "videoId": "13EL6Mgeocc",
+      "duration": "3:20:01",
+      "duration_seconds": 12001,
+      "artists": [
+        { "id": "UCo5JkRVziPY8hl5VCpukMkQ", "name": "White Noise Masters" },
+        { "id": "UC0VD-Sorq2XpUagaoemRAMA", "name": "Deep Sleep" }
+      ],
+      "album": {
+        "id": "MPREb_k9b0KESuAJF",
+        "name": "Rain Sound 200 Minutes for Deep Sleep Inducing – White Noise..."
+      },
+      "thumbnails": [ { "url": "https://lh3.googleusercontent.com/...", "width": 60, "height": 60 } ]
+    }
+  ]
 }
 ```
 
-### Error Response
+GET `/api/search/suggestions?q=music`
+```json
+{ "suggestions": ["music", "music to watch boys to", "sleeping music"] }
+```
+
+GET `/api/songs/{video_id}` (example: `13EL6Mgeocc`)
 ```json
 {
-  "error": "Error message",
-  "detail": "Additional error details"
+  "videoDetails": {
+    "videoId": "13EL6Mgeocc",
+    "title": "Rain Sound (Pure White Noise for Natural Deep Sleep Inducing)",
+    "author": "White Noise Masters - Topic",
+    "lengthSeconds": "12001"
+  },
+  "microformat": { "microformatDataRenderer": { "appName": "YouTube Music" } }
 }
+```
+
+GET `/api/albums/{browse_id}` (example: `MPREb_k9b0KESuAJF`)
+```json
+{
+  "title": "Rain Sound 200 Minutes for Deep Sleep Inducing – White Noise...",
+  "artists": [{ "id": "UCo5JkRVziPY8hl5VCpukMkQ", "name": "White Noise Masters" }],
+  "tracks": [ { "videoId": "13EL6Mgeocc", "title": "Rain Sound ...", "length": "3:20:01" } ]
+}
+```
+
+GET `/api/artists/{browse_id}` (example: `UCyX0TcJ20FifnGP3M6J-IXQ`)
+```json
+{
+  "name": "Meditation Music",
+  "songs": { "results": [ { "videoId": "...", "title": "..." } ] },
+  "albums": { "results": [ { "browseId": "...", "title": "..." } ] }
+}
+```
+
+GET `/api/playlists/{playlist_id}?limit=5`
+```json
+{
+  "id": "RDCLAK5uy_nDL8KeBrUagwyISwNmyEiSfYgz1gVCesg",
+  "title": "Mellow Pop Classics",
+  "author": "YouTube Music",
+  "tracks": [ { "videoId": "...", "title": "...", "artists": [ { "name": "..." } ] } ]
+}
+```
+
+GET `/api/charts?country=US`
+```json
+{
+  "error": "Charts data unavailable: Charts service temporarily unavailable",
+  "message": "YouTube Music charts are currently not accessible. This may be due to regional restrictions or service limitations.",
+  "fallback": "Try using the search endpoint instead: /api/search?q=trending&filter=songs"
+}
+```
+
+GET `/api/moods`
+```json
+{
+  "Genres": [ { "title": "African", "params": "ggMPOg1uX0..." }, { "title": "Arabic" } ],
+  "Moods & moments": [ { "title": "Chill", "params": "ggMPOg1uX1..." }, { "title": "Sleep" } ]
+}
+```
+
+GET `/api/moods/{category_id}` (example: Chill category param)
+```json
+[
+  {
+    "title": "Coffee Shop Blend",
+    "description": "Playlist • YouTube Music",
+    "playlistId": "RDCLAK5uy_nBE4bLuBHUXWZrF59ZrkPEToKt8M_I3Vc",
+    "thumbnails": [ { "url": "https://lh3.googleusercontent.com/...", "width": 226, "height": 226 } ]
+  }
+]
+```
+
+GET `/api/watch_playlist?videoId=13EL6Mgeocc&radio=true&limit=3`
+```json
+{
+  "tracks": [ { "videoId": "...", "title": "...", "length": "..." } ],
+  "related": true
+}
+```
+
+### YouTube
+
+GET `/api/yt_search?q=music&filter=videos&limit=1`
+```json
+{
+  "query": "music",
+  "filter": "videos",
+  "results": [ { "title": "Shaky (Official Video) ...", "channel": { "name": "..." }, "duration": "3 minutes, 35 seconds" } ]
+}
+```
+
+GET `/api/yt_channel/{channel_id}` (example: `UC_x5XG1OV2P6uZZ5FSM9Ttw`)
+```json
+{
+  "channel_id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+  "channel_info": { "title": "Google for Developers", "subscribers": "...", "link": "https://www.youtube.com/..." }
+}
+```
+
+GET `/api/yt_playlists?q=music&limit=1`
+```json
+{
+  "query": "music",
+  "playlists": [ { "title": "...", "playlistId": "PL...", "channel": { "name": "..." } } ]
+}
+```
+
+### Standard Error Response
+```json
+{ "error": "Human-readable error message" }
 ```
 
 ## Rate Limits & Notes
