@@ -119,40 +119,66 @@ def get_artist_summary(browse_id: str):
 	try:
 		artist = _client().get_artist(browse_id)
 
+		if not isinstance(artist, dict):
+			return jsonify({"error": "Unexpected artist payload format"}), 500
+
 		artist_name = artist.get("name")
 
 		# Attempt to extract a playlistId for Top songs
-		songs_section = artist.get("songs") or {}
-		playlist_id = songs_section.get("playlistId")
-		if not playlist_id:
-			# Fallback: try to take from first song's playlistId if present
-			results = songs_section.get("results") or []
-			if results:
-				playlist_id = results[0].get("playlistId")
+		songs_section = artist.get("songs")
+		playlist_id = None
+		if isinstance(songs_section, dict):
+			playlist_id = songs_section.get("playlistId")
+			if not playlist_id:
+				results = songs_section.get("results")
+				if isinstance(results, list) and results:
+					first = results[0]
+					if isinstance(first, dict):
+						playlist_id = first.get("playlistId")
 
 		# Recommended artists (Fans might also like)
-		related = artist.get("related") or []
+		related = artist.get("related")
 		recommended_artists = []
-		for item in related:
-			name = item.get("title") or item.get("name")
-			browse = item.get("browseId")
-			thumbs = item.get("thumbnails") or []
-			thumb_url = thumbs[0]["url"] if thumbs else None
-			recommended_artists.append({
-				"name": name,
-				"browseId": browse,
-				"thumbnail": thumb_url,
-			})
+		if isinstance(related, list):
+			for item in related:
+				if not isinstance(item, dict):
+					continue
+				name = item.get("title") or item.get("name")
+				browse = item.get("browseId")
+				thumbs = item.get("thumbnails")
+				thumb_url = None
+				if isinstance(thumbs, list) and thumbs:
+					first_thumb = thumbs[0]
+					if isinstance(first_thumb, dict):
+						thumb_url = first_thumb.get("url")
+				recommended_artists.append({
+					"name": name,
+					"browseId": browse,
+					"thumbnail": thumb_url,
+				})
 
 		# Featured on playlists
-		playlists_section = artist.get("playlists") or {}
-		featured_results = playlists_section.get("results") or []
+		playlists_section = artist.get("playlists")
 		featured_on_playlists = []
+		featured_results = []
+		if isinstance(playlists_section, dict):
+			maybe_results = playlists_section.get("results")
+			if isinstance(maybe_results, list):
+				featured_results = maybe_results
+		elif isinstance(playlists_section, list):
+			featured_results = playlists_section
+
 		for pl in featured_results:
+			if not isinstance(pl, dict):
+				continue
 			title = pl.get("title")
 			browse = pl.get("browseId") or pl.get("playlistId")
-			thumbs = pl.get("thumbnails") or []
-			thumb_url = thumbs[0]["url"] if thumbs else None
+			thumbs = pl.get("thumbnails")
+			thumb_url = None
+			if isinstance(thumbs, list) and thumbs:
+				first_thumb = thumbs[0]
+				if isinstance(first_thumb, dict):
+					thumb_url = first_thumb.get("url")
 			featured_on_playlists.append({
 				"title": title,
 				"browseId": browse,
