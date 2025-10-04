@@ -26,15 +26,29 @@ def _client():
 def _get_youtube_suggestions_fallback(query: str) -> list:
 	"""Fallback method using a different approach"""
 	try:
-		# Alternative approach using a different endpoint
-		url = "https://clients1.google.com/complete/search"
-		params = {
-			"client": "youtube",
-			"hl": "en",
-			"gl": "in",
-			"q": query,
-			"callback": "google.sbox.p50"
-		}
+		# Try multiple fallback endpoints
+		endpoints = [
+			{
+				"url": "https://clients1.google.com/complete/search",
+				"params": {
+					"client": "youtube",
+					"hl": "en",
+					"gl": "in",
+					"q": query,
+					"callback": "google.sbox.p50"
+				}
+			},
+			{
+				"url": "https://suggestqueries-clients6.youtube.com/complete/search",
+				"params": {
+					"ds": "yt",
+					"hl": "en",
+					"gl": "in",
+					"client": "youtube",
+					"q": query
+				}
+			}
+		]
 		
 		headers = {
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -42,18 +56,43 @@ def _get_youtube_suggestions_fallback(query: str) -> list:
 			"Referer": "https://www.youtube.com/"
 		}
 		
-		response = requests.get(url, params=params, headers=headers, timeout=10)
-		if response.status_code == 200:
-			content = response.text
-			# Remove callback wrapper
-			if content.startswith("google.sbox.p50(") and content.endswith(");"):
-				content = content[16:-2]
-			
-			data = json.loads(content)
-			if len(data) >= 2 and isinstance(data[1], list):
-				return data[1][:10]  # Limit to 10 suggestions
+		for endpoint in endpoints:
+			try:
+				response = requests.get(endpoint["url"], params=endpoint["params"], headers=headers, timeout=10)
+				if response.status_code == 200:
+					content = response.text
+					
+					# Handle different callback formats
+					if content.startswith("google.sbox.p50(") and content.endswith(");"):
+						content = content[16:-2]
+					elif content.startswith("window.google.ac.h(") and content.endswith(");"):
+						content = content[20:-2]
+					elif content.startswith("window.google.ac.s(") and content.endswith(");"):
+						content = content[20:-2]
+					else:
+						# Try to find the start and end of the JSON
+						start_idx = content.find('(')
+						end_idx = content.rfind(')')
+						if start_idx != -1 and end_idx != -1:
+							content = content[start_idx + 1:end_idx]
+					
+					data = json.loads(content)
+					if len(data) >= 2 and isinstance(data[1], list):
+						suggestions = []
+						for item in data[1]:
+							if isinstance(item, list) and len(item) > 0:
+								suggestions.append(item[0])
+							elif isinstance(item, str):
+								suggestions.append(item)
+						
+						if suggestions:
+							print(f"Fallback API returned {len(suggestions)} suggestions")
+							return suggestions[:10]  # Limit to 10 suggestions
+			except Exception as e:
+				print(f"Fallback endpoint failed: {e}")
+				continue
 		
-		# If API fails, return basic suggestions based on query
+		# If all APIs fail, return basic suggestions based on query
 		return _get_static_suggestions(query)
 	except:
 		return _get_static_suggestions(query)
@@ -112,11 +151,11 @@ def _get_youtube_suggestions(query: str) -> list:
 		}
 		
 		# Use a more generic user agent that's less likely to be blocked
+		# Remove Accept-Encoding to avoid compression issues on server
 		headers = {
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 			"Accept": "*/*",
 			"Accept-Language": "en-US,en;q=0.9",
-			"Accept-Encoding": "gzip, deflate, br",
 			"Referer": "https://www.youtube.com/",
 			"Origin": "https://www.youtube.com",
 			"Cache-Control": "no-cache",
@@ -139,6 +178,11 @@ def _get_youtube_suggestions(query: str) -> list:
 		if not content or len(content) < 10:
 			print(f"YouTube API returned empty/invalid response: {content}")
 			return []
+		
+		# Check if content looks like binary/compressed data
+		if any(ord(c) < 32 and c not in '\t\n\r' for c in content[:50]):
+			print(f"YouTube API returned binary/compressed data, trying fallback...")
+			return _get_youtube_suggestions_fallback(query)
 		
 		# Remove the callback wrapper (e.g., "window.google.ac.h(" and ");")
 		if content.startswith("window.google.ac.h(") and content.endswith(");"):
@@ -296,3 +340,4 @@ def suggestions():
 			return jsonify({"suggestions": sugs, "source": "youtube"})
 	except Exception as e:
 		return jsonify({"error": f"Suggestions failed: {str(e)}"}), 500
+
