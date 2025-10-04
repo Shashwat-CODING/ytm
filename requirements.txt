@@ -5,3 +5,4 @@ waitress==3.0.0
 flask-cors==4.0.0
 git+https://github.com/ahmedayyad-dev/youtube-search-python-fork.git
 requests>=2.31.0
+pycryptodome>=3.19.0

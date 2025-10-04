@@ -340,4 +340,3 @@ def suggestions():
 			return jsonify({"suggestions": sugs, "source": "youtube"})
 	except Exception as e:
 		return jsonify({"error": f"Suggestions failed: {str(e)}"}), 500
-
