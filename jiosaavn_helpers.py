@@ -22,18 +22,8 @@ def create_download_links(encrypted_media_url: str) -> Optional[str]:
         # Decrypt
         decrypted_link = cipher.decrypt(encrypted).decode('utf-8', errors='ignore')
         
-        # Clean up the URL - remove null bytes and non-printable characters
-        cleaned_link = ''.join(char for char in decrypted_link if 32 <= ord(char) < 127)
-        
-        # Remove any trailing characters that aren't part of the URL
-        if '.' in cleaned_link:
-            # Split by '.' and take everything up to the last valid file extension
-            parts = cleaned_link.split('.')
-            if len(parts) >= 2 and parts[-1].lower() in ['mp4', 'mp3', 'webm', 'm4a', 'opus']:
-                cleaned_link = '.'.join(parts[:-1]) + '.' + parts[-1].lower()
-        
-        # Ensure https and remove @ symbol if present
-        return cleaned_link.replace('@', '').replace('http:', 'https:')
+        # Ensure https
+        return decrypted_link.replace('http:', 'https:')
     except Exception as e:
         print(f"Error decrypting download link: {e}")
         return None
