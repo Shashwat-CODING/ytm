@@ -75,16 +75,20 @@ def jiosaavn_search():
             # Get all artist names
             primary_artists = [artist['name'].strip() for artist in track['artists']['primary']] if track['artists']['primary'] else []
             singers = [artist['name'].strip() for artist in track['artists']['all'] if artist.get('role') == 'singer'] if track['artists']['all'] else []
-            all_artists = primary_artists + singers
+            all_artists = list(set(primary_artists + singers))  # Remove duplicates
             
-            # Check if artist matches
+            # More flexible artist matching - check if either name contains the other
             artist_matches = any(
-                normalize_string(artist).lower().startswith(normalize_string(track_artist_name).lower())
+                (normalize_string(artist).lower() in normalize_string(track_artist_name).lower() or
+                 normalize_string(track_artist_name).lower() in normalize_string(artist).lower())
                 for track_artist_name in all_artists
             )
             
-            # Check if title matches
-            title_matches = normalize_string(title).lower().startswith(normalize_string(track['name']).lower())
+            # More flexible title matching - check if either contains the other
+            title_matches = (
+                normalize_string(title).lower() in normalize_string(track['name']).lower() or
+                normalize_string(track['name']).lower() in normalize_string(title).lower()
+            )
             
             if title_matches and artist_matches:
                 matching_track = track
