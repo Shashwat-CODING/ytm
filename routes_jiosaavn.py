@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 import requests
+import time
 from jiosaavn_helpers import create_song_payload, normalize_string
 from typing import Dict, Any, List
 
@@ -33,6 +34,7 @@ def jiosaavn_search():
     """
     title = request.args.get("title", type=str)
     artist = request.args.get("artist", type=str)
+    debug = request.args.get("debug", default=0, type=int) == 1
     
     if not title or not artist:
         return jsonify({"error": "Missing title or artist parameters"}), 400
@@ -52,22 +54,36 @@ def jiosaavn_search():
     )
     
     try:
+        t0 = time.time()
+        print(f"[JioSaavn] /jiosaavn/search title='{title}' artist='{artist}' url='{jiosaavn_api_url}'")
         response = requests.get(jiosaavn_api_url, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }, timeout=15)
+        dt_ms = int((time.time() - t0) * 1000)
+        print(f"[JioSaavn] status={response.status_code} time_ms={dt_ms} len={len(response.text)} content_type='{response.headers.get('Content-Type')}'")
         
         if not response.ok:
+            snippet = response.text[:300] if response.text else ''
+            print(f"[JioSaavn][ERR] Non-200 response body_snippet='{snippet}'")
             return jsonify({
                 "error": f"JioSaavn API returned {response.status_code}: {response.text[:200]}"
             }), 500
         
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as e:
+            snippet = response.text[:300]
+            print(f"[JioSaavn][ERR] JSON parse failed: {e}. body_snippet='{snippet}'")
+            return jsonify({"error": "Invalid JSON from JioSaavn proxy"}), 502
         
-        if not data.get('results') or len(data['results']) == 0:
+        results = data.get('results') or []
+        print(f"[JioSaavn] results_count={len(results)}")
+        if not results:
             return jsonify({"error": "Music stream not found in JioSaavn results"}), 404
         
         # Process results
-        processed_results = [create_song_payload(raw_song) for raw_song in data['results']]
+        processed_results = [create_song_payload(raw_song) for raw_song in results]
+        print(f"[JioSaavn] processed_count={len(processed_results)} sample_titles={[r['name'] for r in processed_results[:3]]}")
         
         # Find matching track
         matching_track = None
@@ -86,11 +102,14 @@ def jiosaavn_search():
             # Check if title matches
             title_matches = normalize_string(title).lower().startswith(normalize_string(track['name']).lower())
             
+            if debug:
+                print(f"[JioSaavn][match_check] track='{track['name']}' artists={all_artists} title_matches={title_matches} artist_matches={artist_matches}")
             if title_matches and artist_matches:
                 matching_track = track
                 break
         
         if not matching_track:
+            print("[JioSaavn] No exact match after processing")
             return jsonify({"error": "Music stream not found in JioSaavn results"}), 404
         
         # Create final response
@@ -109,11 +128,19 @@ def jiosaavn_search():
             "downloadUrl": matching_track['downloadUrl']
         }
         
+        if debug:
+            final_response["_debug"] = {
+                "queried_url": jiosaavn_api_url,
+                "time_ms": dt_ms,
+                "matched_artists": matching_track['artists']
+            }
         return jsonify(final_response)
         
     except requests.exceptions.RequestException as e:
+        print(f"[JioSaavn][ERR] Network error: {e}")
         return jsonify({"error": f"Network error: {str(e)}"}), 500
     except Exception as e:
+        print(f"[JioSaavn][ERR] Unexpected error: {e}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
@@ -143,6 +170,7 @@ def jiosaavn_search_all():
     """
     query = request.args.get("q", type=str)
     limit = request.args.get("limit", default=10, type=int)
+    debug = request.args.get("debug", default=0, type=int) == 1
     
     if not query:
         return jsonify({"error": "Missing query parameter 'q'"}), 400
@@ -161,30 +189,49 @@ def jiosaavn_search_all():
     )
     
     try:
+        t0 = time.time()
+        print(f"[JioSaavn] /jiosaavn/search/all q='{query}' limit={limit} url='{jiosaavn_api_url}'")
         response = requests.get(jiosaavn_api_url, headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         }, timeout=15)
+        dt_ms = int((time.time() - t0) * 1000)
+        print(f"[JioSaavn] status={response.status_code} time_ms={dt_ms} len={len(response.text)} content_type='{response.headers.get('Content-Type')}'")
         
         if not response.ok:
+            snippet = response.text[:300] if response.text else ''
+            print(f"[JioSaavn][ERR] Non-200 response body_snippet='{snippet}'")
             return jsonify({
                 "error": f"JioSaavn API returned {response.status_code}: {response.text[:200]}"
             }), 500
         
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as e:
+            snippet = response.text[:300]
+            print(f"[JioSaavn][ERR] JSON parse failed: {e}. body_snippet='{snippet}'")
+            return jsonify({"error": "Invalid JSON from JioSaavn proxy"}), 502
         
-        if not data.get('results') or len(data['results']) == 0:
+        results = data.get('results') or []
+        print(f"[JioSaavn] results_count={len(results)}")
+        if not results:
             return jsonify({"results": []})
         
         # Process all results
-        processed_results = [create_song_payload(raw_song) for raw_song in data['results']]
+        processed_results = [create_song_payload(raw_song) for raw_song in results]
+        print(f"[JioSaavn] processed_count={len(processed_results)} sample_titles={[r['name'] for r in processed_results[:3]]}")
         
-        return jsonify({
+        resp = {
             "query": query,
             "total": len(processed_results),
             "results": processed_results
-        })
+        }
+        if debug:
+            resp["_debug"] = {"queried_url": jiosaavn_api_url, "time_ms": dt_ms}
+        return jsonify(resp)
         
     except requests.exceptions.RequestException as e:
+        print(f"[JioSaavn][ERR] Network error: {e}")
         return jsonify({"error": f"Network error: {str(e)}"}), 500
     except Exception as e:
+        print(f"[JioSaavn][ERR] Unexpected error: {e}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
