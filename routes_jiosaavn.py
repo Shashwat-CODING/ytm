@@ -87,30 +87,55 @@ def jiosaavn_search():
         
         # Find matching track
         matching_track = None
+
+        def _norm(text: str) -> str:
+            return normalize_string(text or "").strip().lower()
+
+        def _starts_either(a: str, b: str) -> bool:
+            # True if either starts with the other (helps with minor differences)
+            return a.startswith(b) or b.startswith(a)
+
         for track in processed_results:
             # Get all artist names
-            primary_artists = [artist['name'].strip() for artist in track['artists']['primary']] if track['artists']['primary'] else []
-            singers = [artist['name'].strip() for artist in track['artists']['all'] if artist.get('role') == 'singer'] if track['artists']['all'] else []
+            primary_artists = [artist['name'].strip() for artist in (track['artists']['primary'] or [])]
+            singers = [artist['name'].strip() for artist in (track['artists']['all'] or []) if artist.get('role') == 'singer']
             all_artists = primary_artists + singers
-            
+
             # Check if artist matches
-            artist_matches = any(
-                normalize_string(artist).lower().startswith(normalize_string(track_artist_name).lower())
-                for track_artist_name in all_artists
-            )
-            
+            artist_in = _norm(artist)
+            artist_matches = False
+            if all_artists:
+                for track_artist_name in all_artists:
+                    if _starts_either(artist_in, _norm(track_artist_name)):
+                        artist_matches = True
+                        break
+
             # Check if title matches
-            title_matches = normalize_string(title).lower().startswith(normalize_string(track['name']).lower())
-            
+            title_matches = _starts_either(_norm(title), _norm(track['name']))
+
             if debug:
                 print(f"[JioSaavn][match_check] track='{track['name']}' artists={all_artists} title_matches={title_matches} artist_matches={artist_matches}")
-            if title_matches and artist_matches:
+            if title_matches and (artist_matches or not all_artists):
                 matching_track = track
                 break
-        
+
         if not matching_track:
-            print("[JioSaavn] No exact match after processing")
-            return jsonify({"error": "Music stream not found in JioSaavn results"}), 404
+            # Fallback: choose the first with title match only
+            title_only = next((t for t in processed_results if _starts_either(_norm(title), _norm(t['name']))), None)
+            if title_only:
+                matching_track = title_only
+                print("[JioSaavn] Falling back to title-only match")
+            else:
+                # Log a concise summary to help debugging on server
+                sample = [
+                    {
+                        "name": tr.get('name'),
+                        "artists": [a.get('name') for a in (tr.get('artists', {}).get('primary') or [])]
+                    }
+                    for tr in processed_results[:5]
+                ]
+                print(f"[JioSaavn] No exact match after processing. sample_candidates={sample}")
+                return jsonify({"error": "Music stream not found in JioSaavn results"}), 404
         
         # Create final response
         final_response = {
