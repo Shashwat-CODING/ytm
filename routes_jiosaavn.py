@@ -40,7 +40,7 @@ def jiosaavn_search():
     # Construct JioSaavn API URL
     search_query = f"{title} {artist}"
     jiosaavn_api_url = (
-        f"https://www.jiosaavn.com/api.php"
+        f"https://fragrant-rain-244a.bob17040246.workers.dev/proxy?url=https://www.jiosaavn.com/api.php"
         f"?_format=json"
         f"&_marker=0"
         f"&api_version=4"
